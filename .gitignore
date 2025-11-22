@@ -1,0 +1,6 @@
+.env
+n8n_data/
+*.log
+.DS_Store
+credentials/*.json
+!credentials/.gitkeep

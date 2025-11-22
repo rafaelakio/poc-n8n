@@ -1,0 +1,173 @@
+{
+  "name": "Webhook HTTP Validator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "validate-url",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "validate-url"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.url }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-request-webhook",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.statusCode }}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "id": "check-200-webhook",
+      "name": "Status 200?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"status\": $json.statusCode, \"message\": \"Request successful\", \"url\": $json.url, \"timestamp\": new Date().toISOString() } }}"
+      },
+      "id": "response-200",
+      "name": "Response 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.statusCode }}",
+              "operation": "largerEqual",
+              "value2": 400
+            },
+            {
+              "value1": "={{ $json.statusCode }}",
+              "operation": "smaller",
+              "value2": 500
+            }
+          ]
+        }
+      },
+      "id": "check-4xx-webhook",
+      "name": "Status 4xx?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"status\": $json.statusCode, \"message\": \"Client error detected\", \"error_type\": $json.statusCode === 404 ? 'Not Found' : $json.statusCode === 401 ? 'Unauthorized' : $json.statusCode === 403 ? 'Forbidden' : 'Client Error', \"url\": $json.url, \"timestamp\": new Date().toISOString() } }}"
+      },
+      "id": "response-4xx",
+      "name": "Response 4xx",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 350]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"status\": $json.statusCode || 'unknown', \"message\": \"Other error or status\", \"url\": $json.url, \"timestamp\": new Date().toISOString() } }}"
+      },
+      "id": "response-other",
+      "name": "Response Other",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Status 200?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status 200?": {
+      "main": [
+        [
+          {
+            "node": "Response 200",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status 4xx?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status 4xx?": {
+      "main": [
+        [
+          {
+            "node": "Response 4xx",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response Other",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}
