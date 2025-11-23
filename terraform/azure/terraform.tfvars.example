@@ -1,0 +1,25 @@
+# Azure Configuration
+location            = "East US"
+resource_group_name = "rg-poc-n8n"
+project_name        = "poc-n8n"
+
+# Storage Account (must be globally unique, lowercase alphanumeric only)
+storage_account_name = "stpocn8n12345"
+
+# App Service (must be globally unique)
+app_service_name      = "app-poc-n8n-12345"
+app_service_plan_sku  = "B1"
+app_service_always_on = false
+
+# n8n Configuration
+n8n_basic_auth_user     = "admin"
+n8n_basic_auth_password = "change-this-password"
+timezone                = "America/Sao_Paulo"
+
+# Tags
+tags = {
+  Project     = "poc-n8n"
+  Environment = "dev"
+  ManagedBy   = "Terraform"
+  Team        = "DevOps"
+}
