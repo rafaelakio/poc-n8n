@@ -1,0 +1,151 @@
+  Relatório de Code Review — POC n8n HTTP Status Validator
+
+  Análise completa · 22 arquivos · ~3.063 linhas · 2 commits
+
+  ---
+  1. Visão Geral
+
+  Prova de conceito usando n8n para validar status HTTP de URLs, com suporte a deploy em AWS (ECS Fargate) e Azure (App
+  Service) via Terraform.
+
+  ---
+  2. Stack Tecnológico
+
+  ┌──────────────────┬────────────────────┐
+  │    Componente    │     Tecnologia     │
+  ├──────────────────┼────────────────────┤
+  │ Orquestração     │ n8n (Docker)       │
+  ├──────────────────┼────────────────────┤
+  │ Containerização  │ Docker Compose 3.8 │
+  ├──────────────────┼────────────────────┤
+  │ IaC              │ Terraform 1.0+     │
+  ├──────────────────┼────────────────────┤
+  │ Cloud            │ AWS + Azure        │
+  ├──────────────────┼────────────────────┤
+  │ Scripts de Teste │ Bash / Batch       │
+  └──────────────────┴────────────────────┘
+
+  ---
+  3. O que foi implementado
+
+  Workflows n8n (2)
+
+  - webhook-http-validator.json — Trigger via POST webhook; valida URL recebida no body; retorna JSON com status,
+  error_type e timestamp
+  - http-status-validator.json — Trigger manual; mesmo fluxo com Merge node para consolidar resultados
+
+  Ambos tratam: 200 (sucesso), 4xx (client errors com mapeamento de tipo), outros erros
+
+  Infraestrutura Terraform
+
+  - AWS: VPC + subnets + ECS Fargate + ALB + EFS + CloudWatch + IAM roles
+  - Azure: Resource Group + Storage Account + App Service + Application Insights
+
+  Scripts de Teste
+
+  - test-requests.sh / .bat — 5 cenários (200, 404, 401, 403, 500)
+  - test-all.sh — vazio (placeholder)
+
+  Documentação (5 arquivos Markdown)
+
+  README, QUICKSTART, CONTRIBUTING, TESTING, WORKFLOWS — nível excepcional
+
+  ---
+  4. Pontos Positivos
+
+  - Documentação muito detalhada e prática (9/10)
+  - .gitignore bem configurado — credenciais excluídas
+  - Senhas marcadas como sensitive no Terraform
+  - HTTPS obrigatório na config Azure
+  - Suporte multiplataforma (Linux/Mac/Windows)
+  - Naming conventions consistentes
+
+  ---
+  5. Problemas Identificados
+
+  Crítico (bloqueia produção)
+
+  ┌─────┬────────────────────────────────────────────────┬───────────────────────────────┬──────────────────────────┐
+  │  #  │                    Problema                    │            Arquivo            │         Impacto          │
+  ├─────┼────────────────────────────────────────────────┼───────────────────────────────┼──────────────────────────┤
+  │ 1   │ Security group expõe porta 5678 para 0.0.0.0/0 │ terraform/aws/main.tf:73-78   │ Acesso público           │
+  │     │                                                │                               │ irrestrito ao n8n        │
+  ├─────┼────────────────────────────────────────────────┼───────────────────────────────┼──────────────────────────┤
+  │ 2   │ ALB sem HTTPS — tráfego em plaintext           │ terraform/aws/main.tf:249-250 │ Dados expostos em        │
+  │     │                                                │                               │ trânsito                 │
+  ├─────┼────────────────────────────────────────────────┼───────────────────────────────┼──────────────────────────┤
+  │ 3   │ Health check matcher = "200,401" — aceita auth │ terraform/aws/main.tf:232-242 │ Roteamento indevido      │
+  │     │  error como saudável                           │                               │                          │
+  └─────┴────────────────────────────────────────────────┴───────────────────────────────┴──────────────────────────┘
+
+  Médio
+
+  ┌─────┬────────────────────────────────────────────────────┬────────────────────────────────┐
+  │  #  │                      Problema                      │          Localização           │
+  ├─────┼────────────────────────────────────────────────────┼────────────────────────────────┤
+  │ 4   │ Sem retry logic nos workflows                      │ Ambos *.json                   │
+  ├─────┼────────────────────────────────────────────────────┼────────────────────────────────┤
+  │ 5   │ Sem validação de URL antes da request              │ Ambos *.json                   │
+  ├─────┼────────────────────────────────────────────────────┼────────────────────────────────┤
+  │ 6   │ Sem rate limiting (risco de DDoS)                  │ Workflows + Terraform          │
+  ├─────┼────────────────────────────────────────────────────┼────────────────────────────────┤
+  │ 7   │ Sem alertas configurados (CloudWatch/Azure Alerts) │ Terraform                      │
+  ├─────┼────────────────────────────────────────────────────┼────────────────────────────────┤
+  │ 8   │ n8nio/n8n:latest — versão não fixada               │ docker-compose.yml + Terraform │
+  ├─────┼────────────────────────────────────────────────────┼────────────────────────────────┤
+  │ 9   │ test-all.sh está vazio                             │ examples/test-all.sh           │
+  └─────┴────────────────────────────────────────────────────┴────────────────────────────────┘
+
+  Baixo
+
+  - Sem CI/CD para testes automatizados
+  - Sem plano de backup para dados (EFS/Azure Files)
+  - Sem auditoria de logs (CloudTrail)
+
+  ---
+  6. Score por Dimensão
+
+  ┌─────────────────────┬────────┐
+  │      Dimensão       │  Nota  │
+  ├─────────────────────┼────────┤
+  │ Documentação        │ 9/10   │
+  ├─────────────────────┼────────┤
+  │ Funcionalidade      │ 8/10   │
+  ├─────────────────────┼────────┤
+  │ Arquitetura         │ 7/10   │
+  ├─────────────────────┼────────┤
+  │ Qualidade de Código │ 7/10   │
+  ├─────────────────────┼────────┤
+  │ Operabilidade       │ 6/10   │
+  ├─────────────────────┼────────┤
+  │ Segurança           │ 4/10   │
+  ├─────────────────────┼────────┤
+  │ Testabilidade       │ 3/10   │
+  ├─────────────────────┼────────┤
+  │ Média Geral         │ 6.0/10 │
+  └─────────────────────┴────────┘
+
+  ---
+  7. Nível de Maturidade
+
+  ▎ MVP / Protótipo (Level 2/5)
+  ▎ Adequado para PoC e demonstração. Não recomendado para produção sem resolver os itens críticos de segurança.
+
+  ---
+  8. Roadmap de Melhorias (priorizado)
+
+  ┌─────────────────────┬─────────────────────────────────────────────────────────┬─────────┐
+  │        Fase         │                          Ações                          │ Esforço │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┼─────────┤
+  │ Fase 1 — Crítico    │ Restringir SG, adicionar HTTPS, corrigir health check   │ ~2h     │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┼─────────┤
+  │ Fase 2 — Importante │ Retry logic, validação de input, rate limiting, alertas │ ~7h     │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┼─────────┤
+  │ Fase 3 — Desejável  │ CI/CD, versionamento de imagens, backup plan            │ ~9h     │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┼─────────┤
+  │ Fase 4 — Bônus      │ Auto-scaling, dashboard, structured logging             │ ~8h     │
+  └─────────────────────┴─────────────────────────────────────────────────────────┴─────────┘
+
+  Estimativa total para produção: ~26h / 2-3 semanas
+
+  ---
