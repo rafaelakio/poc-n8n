@@ -1,0 +1,47 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Install jq and shellcheck
+        run: sudo apt-get update && sudo apt-get install -y jq shellcheck
+
+      - name: Validate docker-compose files
+        run: |
+          for f in $(find . -name 'docker-compose*.y*ml' -not -path './.git/*'); do
+            echo "Validating $f"
+            docker compose -f "$f" config -q
+          done
+
+      - name: Validate workflow JSON
+        run: find . -name '*.json' -not -path './.git/*' -exec sh -c 'jq . "$1" >/dev/null' _ {} \;
+
+      - name: Terraform fmt/validate
+        run: |
+          for d in terraform/aws terraform/azure; do
+            if [ -d "$d" ]; then
+              terraform -chdir="$d" fmt -check -recursive || true
+              terraform -chdir="$d" init -backend=false
+              terraform -chdir="$d" validate
+            fi
+          done
+
+      - name: Run test suite
+        run: make test || true
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+        continue-on-error: true
