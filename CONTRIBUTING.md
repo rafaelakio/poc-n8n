@@ -230,6 +230,45 @@ curl -X POST http://localhost:5678/webhook/validate-url \
 
 ## 🔄 Processo de Pull Request
 
+### Workflow de Branches
+
+- Branches de feature devem usar os prefixos:
+  - `feature/<descricao-curta>` para novas funcionalidades
+  - `fix/<descricao-curta>` para correção de bugs
+  - `chore/<descricao-curta>` para manutenção, CI, build, etc.
+- Todo trabalho deve ser feito em um feature branch derivado de `main`.
+- Abra um Pull Request contra `main`.
+- Aguarde **pelo menos 1 aprovação** antes de fazer merge.
+- O merge em `main` só ocorre após review e CI verde.
+
+### Processo de Code Review
+
+- Todo PR precisa de **ao menos 1 aprovação** de um code owner antes do merge.
+- Reviewers devem verificar:
+  - Aderência ao style guide e padrões do projeto
+  - Cobertura de testes (quando aplicável)
+  - Documentação atualizada
+  - Ausência de credenciais ou segredos no código
+- O autor do PR deve responder comentários e empurrar novos commits (nunca force-push em PRs em review).
+
+### Como criar um PR
+
+1. Use um título descritivo seguindo Conventional Commits (`feat: ...`, `fix: ...`, etc.).
+2. Preencha **todo** o template de PR (`.github/pull_request_template.md`).
+3. Vincule issues relacionadas com `Closes #123` ou `Refs #123`.
+4. Verifique que `make test` e `pre-commit run --all-files` passam localmente.
+5. Anexe screenshots quando houver mudanças visuais.
+
+### Branch Protection (como configurar no GitHub)
+
+Em `Settings → Branches → Add rule` para `main`, habilite:
+
+- **Require a pull request before merging** → Require approvals: `1`
+- **Require status checks to pass before merging** → selecione o job `validate` do workflow `CI`
+- **Require branches to be up to date before merging**
+- **Include administrators**
+- (Recomendado) **Do not allow bypassing the above settings**
+
 ### Checklist
 
 Antes de submeter um PR, verifique:
@@ -254,13 +293,15 @@ Descrição mais detalhada se necessário.
 Fixes #123
 ```
 
-**Tipos:**
+**Tipos (Conventional Commits):**
 - `feat`: Nova funcionalidade (novo workflow, node)
 - `fix`: Correção de bug
 - `docs`: Alterações na documentação
 - `refactor`: Refatoração de workflow
 - `test`: Adição ou correção de testes
 - `chore`: Tarefas de manutenção
+- `ci`: Mudanças em pipelines de CI/CD
+- `build`: Mudanças em build, dependências, Docker, Terraform
 
 **Exemplos:**
 
