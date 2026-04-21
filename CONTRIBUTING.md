@@ -56,9 +56,8 @@ git checkout -b feature/minha-contribuicao
 
 ```bash
 # Execute os testes
-cd examples
-chmod +x test-requests.sh
-./test-requests.sh
+chmod +x examples/*.sh tests/*.sh
+make test
 
 # Ou no Windows
 test-requests.bat
