@@ -167,16 +167,19 @@ resource "aws_ecs_task_definition" "app" {
           value = var.n8n_basic_auth_user
         },
         {
-          name  = "N8N_BASIC_AUTH_PASSWORD"
-          value = var.n8n_basic_auth_password
-        },
-        {
           name  = "N8N_PORT"
           value = "5678"
         },
         {
           name  = "GENERIC_TIMEZONE"
           value = var.timezone
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "N8N_BASIC_AUTH_PASSWORD"
+          valueFrom = aws_secretsmanager_secret.n8n_password.arn
         }
       ]
 
@@ -330,6 +333,37 @@ resource "aws_iam_role" "ecs_task" {
   })
 
   tags = var.tags
+}
+
+# Secrets Manager for n8n password
+resource "aws_secretsmanager_secret" "n8n_password" {
+  name = "${var.project_name}/n8n-basic-auth-password"
+
+  tags = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "n8n_password" {
+  secret_id     = aws_secretsmanager_secret.n8n_password.id
+  secret_string = var.n8n_basic_auth_password
+}
+
+# IAM policy for ECS to read Secrets Manager
+resource "aws_iam_role_policy" "ecs_secrets" {
+  name = "${var.project_name}-ecs-secrets-policy"
+  role = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [aws_secretsmanager_secret.n8n_password.arn]
+      }
+    ]
+  })
 }
 
 data "aws_availability_zones" "available" {
